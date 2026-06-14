@@ -92,7 +92,7 @@ export function createSampleInspection(): InspectionResult {
   return {
     id: "sample-inspection",
     createdAt: new Date().toISOString(),
-    assetName: "Demo Overpass B-104",
+    assetName: "Overpass B-104",
     inputName: "sample-drone-orbit.mp4",
     inputKind: "sample",
     healthScore: 64,

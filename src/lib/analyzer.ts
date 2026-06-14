@@ -1,11 +1,12 @@
 import { createSampleInspection, severityRank } from "../data/sampleInspection";
 import type {
   DamageIssue,
-  DamageType,
   InspectionResult,
   IssueSeverity,
   StageProgress,
 } from "../types";
+
+type LegacyDamageType = DamageIssue["type"];
 
 interface FrameSample {
   index: number;
@@ -61,7 +62,7 @@ const STAGES: StageProgress[] = [
 ];
 
 const issueCopy: Record<
-  DamageType,
+  LegacyDamageType,
   {
     title: string;
     component: string;
@@ -280,7 +281,7 @@ function drawToFrame(source: CanvasImageSource, index: number): FrameSample {
 }
 
 function detectIssues(frames: FrameSample[]): DamageIssue[] {
-  const buckets: Record<DamageType, SignalBucket> = {
+  const buckets: Record<LegacyDamageType, SignalBucket> = {
     crack: { count: 0, x: 0, y: 0, frame: 0 },
     corrosion: { count: 0, x: 0, y: 0, frame: 0 },
     spalling: { count: 0, x: 0, y: 0, frame: 0 },
@@ -328,20 +329,20 @@ function detectIssues(frames: FrameSample[]): DamageIssue[] {
     }
   }
 
-  return (Object.keys(buckets) as DamageType[])
+  return (Object.keys(buckets) as LegacyDamageType[])
     .map((type) => buildIssue(type, buckets[type], samples))
     .filter((issue): issue is DamageIssue => issue !== null)
     .sort((a, b) => b.priority - a.priority);
 }
 
 function buildIssue(
-  type: DamageType,
+  type: LegacyDamageType,
   bucket: SignalBucket,
   sampleCount: number,
 ): DamageIssue | null {
   if (bucket.count === 0 || sampleCount === 0) return null;
   const ratio = bucket.count / sampleCount;
-  const threshold: Record<DamageType, number> = {
+  const threshold: Record<LegacyDamageType, number> = {
     crack: 0.0025,
     corrosion: 0.0035,
     spalling: 0.003,
@@ -388,10 +389,10 @@ function severityFromSignal(ratio: number, confidence: number): IssueSeverity {
   return "low";
 }
 
-function mapToBridge(type: DamageType, x: number, y: number) {
+function mapToBridge(type: LegacyDamageType, x: number, y: number) {
   const worldX = Number(((x - 0.5) * 9.2).toFixed(2));
   const worldZ = Number(((y - 0.5) * 3.4).toFixed(2));
-  const baseY: Record<DamageType, number> = {
+  const baseY: Record<LegacyDamageType, number> = {
     crack: 0.22,
     corrosion: -0.12,
     spalling: -1.15,
@@ -404,7 +405,7 @@ function mapToBridge(type: DamageType, x: number, y: number) {
   };
 }
 
-function componentFromPoint(type: DamageType, x: number, y: number): string {
+function componentFromPoint(type: LegacyDamageType, x: number, y: number): string {
   if (type === "corrosion") return x > 0.5 ? "Right bearing seat" : "Left bearing seat";
   if (type === "spalling") return x > 0.5 ? "Pier 2" : "Pier 1";
   if (type === "water") return y < 0.45 ? "Expansion joint" : "Drainage path";
