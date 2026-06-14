@@ -3,13 +3,15 @@ import {
   Activity,
   AlertTriangle,
   Camera,
+  ChevronDown,
   CheckCircle2,
   ClipboardList,
   FileDown,
+  Globe2,
   Leaf,
   MapPin,
   Play,
-  ScanLine,
+  Search,
   ShieldCheck,
   UploadCloud,
 } from "lucide-react";
@@ -83,20 +85,75 @@ export default function App() {
 
   return (
     <main className="app-shell">
-      <aside className="left-panel">
-        <header className="brand">
-          <div className="brand-mark">
-            <ScanLine size={22} />
+      <header className="topbar">
+        <div className="topbar-brand">
+          <div className="brand-symbol" aria-hidden="true">
+            <span />
+            <span />
+            <span />
+            <span />
+            <span />
+            <span />
           </div>
-          <div>
-            <h1>BridgeSplat</h1>
-            <p>Infrastructure condition workspace</p>
-          </div>
-        </header>
+          <strong>BridgeSplat</strong>
+        </div>
 
+        <nav className="topnav" aria-label="Primary">
+          <button>
+            Solutions <ChevronDown size={13} />
+          </button>
+          <button>
+            Products <ChevronDown size={13} />
+          </button>
+          <button>
+            Pricing <ChevronDown size={13} />
+          </button>
+          <button>
+            Resources <ChevronDown size={13} />
+          </button>
+          <button>
+            What&apos;s New <ChevronDown size={13} />
+          </button>
+        </nav>
+
+        <div className="top-actions">
+          <button className="icon-button" aria-label="Search inspections">
+            <Search size={18} />
+          </button>
+          <button className="language-button">
+            <Globe2 size={15} />
+            EN
+            <ChevronDown size={13} />
+          </button>
+          <button
+            className="start-button"
+            disabled={isProcessing}
+            onClick={() => handleRun(file)}
+          >
+            {isProcessing ? "Processing" : "Start Scan"}
+          </button>
+          <button className="text-button">Contact</button>
+          <button className="text-button">Sign In</button>
+        </div>
+      </header>
+
+      <section className="hero-strip">
+        <p>
+          Discover structural insights and maintenance priorities around every span
+          with BridgeSplat 3D digital twins.
+        </p>
+      </section>
+
+      <aside className="left-panel">
         <section className="mission-strip">
-          <span>Early defect mapping</span>
-          <strong>Video to 3D inspection report</strong>
+          <span>Digital twin</span>
+          <strong>{result.assetName}</strong>
+          <small>
+            {result.issues.length} mapped issue{result.issues.length === 1 ? "" : "s"} -
+            {" "}
+            {result.model.sourceFrames} source view
+            {result.model.sourceFrames === 1 ? "" : "s"}
+          </small>
         </section>
 
         <section className="panel-section">
@@ -333,10 +390,10 @@ function SelectedIssueCard({ issue }: { issue: DamageIssue }) {
 }
 
 function scoreColor(risk: IssueSeverity) {
-  if (severityRank[risk] >= 4) return "#ba2f2b";
-  if (severityRank[risk] === 3) return "#d15c3a";
-  if (severityRank[risk] === 2) return "#ad6a16";
-  return "#247343";
+  if (severityRank[risk] >= 4) return "#bf263a";
+  if (severityRank[risk] === 3) return "#ff315f";
+  if (severityRank[risk] === 2) return "#bf6a16";
+  return "#008c95";
 }
 
 function formatBytes(bytes: number) {

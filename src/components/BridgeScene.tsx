@@ -1,4 +1,5 @@
 import { useEffect, useRef } from "react";
+import { Box as BoxIcon, Maximize2, Share2, Tag } from "lucide-react";
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import { issueStyles, severityRank } from "../data/sampleInspection";
@@ -32,8 +33,8 @@ export default function BridgeScene({
     if (!container) return undefined;
 
     const scene = new THREE.Scene();
-    scene.background = new THREE.Color("#e5e9e1");
-    scene.fog = new THREE.Fog("#e5e9e1", 13, 28);
+    scene.background = new THREE.Color("#050505");
+    scene.fog = new THREE.Fog("#050505", 15, 32);
 
     const camera = new THREE.PerspectiveCamera(42, 1, 0.1, 100);
     camera.position.set(7.4, 4.4, 7.4);
@@ -52,8 +53,8 @@ export default function BridgeScene({
     controls.maxPolarAngle = Math.PI * 0.48;
     controls.target.set(0, -0.25, 0);
 
-    scene.add(new THREE.HemisphereLight("#ffffff", "#89978f", 1.65));
-    const sun = new THREE.DirectionalLight("#ffffff", 2.6);
+    scene.add(new THREE.HemisphereLight("#ffffff", "#121212", 1.32));
+    const sun = new THREE.DirectionalLight("#ffffff", 3.1);
     sun.position.set(5, 8, 4);
     sun.castShadow = true;
     sun.shadow.mapSize.set(2048, 2048);
@@ -161,8 +162,27 @@ export default function BridgeScene({
         <span>Interactive bridge twin</span>
         <strong>{issues.length} mapped issue{issues.length === 1 ? "" : "s"}</strong>
       </div>
-      <div className="scene-overlay bottom-right">
-        Drag to orbit. Click a marker to inspect.
+      <div className="scene-toolbar" aria-label="Viewer controls">
+        <button aria-label="Dollhouse view" title="Dollhouse view">
+          <BoxIcon size={16} />
+        </button>
+        <button aria-label="Inspection tags" title="Inspection tags">
+          <Tag size={16} />
+        </button>
+        <button aria-label="Share model" title="Share model">
+          <Share2 size={16} />
+        </button>
+        <button aria-label="Fullscreen view" title="Fullscreen view">
+          <Maximize2 size={16} />
+        </button>
+      </div>
+      <div className="scene-mini-mark" aria-hidden="true">
+        <span />
+        <span />
+        <span />
+        <span />
+        <span />
+        <span />
       </div>
     </div>
   );
@@ -173,29 +193,29 @@ function createBridgeModel() {
   bridge.name = "bridge-digital-twin";
 
   const concrete = new THREE.MeshStandardMaterial({
-    color: "#c1c8bd",
+    color: "#d2d1c9",
     roughness: 0.78,
     metalness: 0.02,
   });
   const concreteDark = new THREE.MeshStandardMaterial({
-    color: "#a8b1a5",
+    color: "#aaaea6",
     roughness: 0.82,
   });
   const asphalt = new THREE.MeshStandardMaterial({
-    color: "#303833",
+    color: "#262626",
     roughness: 0.92,
   });
   const steel = new THREE.MeshStandardMaterial({
-    color: "#657065",
+    color: "#828c8c",
     roughness: 0.55,
     metalness: 0.18,
   });
   const stripe = new THREE.MeshStandardMaterial({
-    color: "#f4f1d0",
+    color: "#f5f1d8",
     roughness: 0.72,
   });
   const joint = new THREE.MeshStandardMaterial({
-    color: "#28312c",
+    color: "#171717",
     roughness: 0.7,
   });
 
@@ -251,7 +271,7 @@ function addBox(
 function createGroundPlane() {
   const group = new THREE.Group();
   const material = new THREE.MeshStandardMaterial({
-    color: "#d2d8ce",
+    color: "#050505",
     roughness: 0.9,
   });
   const plane = new THREE.Mesh(new THREE.PlaneGeometry(28, 18), material);
@@ -260,13 +280,13 @@ function createGroundPlane() {
   plane.receiveShadow = true;
   group.add(plane);
 
-  const grid = new THREE.GridHelper(28, 28, "#b9c2b6", "#c6cec2");
+  const grid = new THREE.GridHelper(28, 28, "#1c1c1c", "#101010");
   grid.position.y = -2.27;
   group.add(grid);
 
   const serviceRoad = new THREE.Mesh(
     new THREE.PlaneGeometry(22, 2.2),
-    new THREE.MeshStandardMaterial({ color: "#bac2b7", roughness: 0.92 }),
+    new THREE.MeshStandardMaterial({ color: "#0a0a0a", roughness: 0.92 }),
   );
   serviceRoad.rotation.x = -Math.PI / 2;
   serviceRoad.rotation.z = -0.2;
@@ -342,7 +362,7 @@ function createLabelSprite(text: string, color: string) {
   canvas.height = 96;
   const context = canvas.getContext("2d");
   if (!context) throw new Error("Canvas is unavailable");
-  context.shadowColor = "rgba(20, 30, 24, 0.18)";
+  context.shadowColor = "rgba(0, 0, 0, 0.34)";
   context.shadowBlur = 14;
   context.shadowOffsetY = 8;
   context.fillStyle = "rgba(251,252,248,0.94)";

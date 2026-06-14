@@ -4,10 +4,10 @@ export const issueStyles: Record<
   DamageIssue["type"],
   { label: string; color: string; soft: string }
 > = {
-  crack: { label: "Crack", color: "#242424", soft: "#e1e3df" },
-  corrosion: { label: "Corrosion", color: "#b45c19", soft: "#f5e5ca" },
-  spalling: { label: "Spalling", color: "#7b4f3a", soft: "#ecded6" },
-  water: { label: "Water Staining", color: "#2f6286", soft: "#dce9ef" },
+  crack: { label: "Crack", color: "#ff315f", soft: "#ffe0e8" },
+  corrosion: { label: "Corrosion", color: "#bf6a16", soft: "#f8ead8" },
+  spalling: { label: "Spalling", color: "#6f5cff", soft: "#e9e5ff" },
+  water: { label: "Water Staining", color: "#008c95", soft: "#dff5f5" },
 };
 
 export const severityRank: Record<IssueSeverity, number> = {
