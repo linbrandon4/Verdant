@@ -40,33 +40,69 @@ export interface DetectionBox {
   height: string;
 }
 
+export interface DetectionDetail {
+  damageType: string;
+  confidence: number;
+  severityHint: string;
+}
+
 export interface LocalBusinessLink {
   name: string;
   url: string;
   source: string;
+  specialty?: string | null;
+  address?: string | null;
+  phone?: string | null;
+  rating?: number | null;
+  ratingCount?: number | null;
+}
+
+export interface ImageInspectionResult {
+  fileName: string;
+  annotatedImageUrl?: string | null;
+  detections?: number | null;
+  severity?: number | null;
+  priority?: string | null;
+  inspectionType?: string | null;
+  detectionDetails?: DetectionDetail[];
+  detectionBoxes?: DetectionBox[];
 }
 
 export interface InspectionResult {
-  /** Backend: annotated image URL with detection boxes drawn */
   annotatedImageUrl?: string | null;
-  /** Backend: total detection count */
   detections?: number | null;
-  /** Backend: severity score */
   severity?: number | null;
-  /** Backend: repair cost range */
+  priority?: string | null;
+  inspectionType?: string | null;
+  averageConfidence?: number | null;
+  damageCounts?: Record<string, number>;
+  detectionDetails?: DetectionDetail[];
   costToFix?: string | null;
-  /** Backend: recommended fix timeline */
+  costReasoning?: string | null;
+  sustainableCost?: string | null;
+  traditionalCost?: string | null;
   timelineToFix?: string | null;
-  /** Backend: sustainable repair method description */
   sustainableFix?: string | null;
-  /** Backend: traditional vs sustainable comparison */
-  traditionalComparison?: string | null;
-  /** Backend: environmental / waste impact summary */
+  traditionalSolution?: string | null;
+  sustainabilityComparison?: string | null;
   estimatedImpact?: string | null;
-  /** Backend: nearby contractor links */
+  summary?: string | null;
+  disclaimer?: string | null;
+  analysisEngine?: string | null;
+  analysisNotes?: string | null;
   localBusinesses?: LocalBusinessLink[];
-  /** Backend: bounding boxes if rendered client-side instead of on image */
   detectionBoxes?: DetectionBox[];
+  images?: ImageInspectionResult[];
+}
+
+export interface SavedAnalysis {
+  id: string;
+  name: string;
+  assetType: AssetType;
+  locationLabel: string;
+  notes: string;
+  result: InspectionResult;
+  createdAt: string;
 }
 
 export function createEmptyInspectionResult(): InspectionResult {
@@ -74,12 +110,26 @@ export function createEmptyInspectionResult(): InspectionResult {
     annotatedImageUrl: null,
     detections: null,
     severity: null,
+    priority: null,
+    inspectionType: null,
+    averageConfidence: null,
+    damageCounts: {},
+    detectionDetails: [],
     costToFix: null,
+    costReasoning: null,
+    sustainableCost: null,
+    traditionalCost: null,
     timelineToFix: null,
     sustainableFix: null,
-    traditionalComparison: null,
+    traditionalSolution: null,
+    sustainabilityComparison: null,
     estimatedImpact: null,
+    summary: null,
+    disclaimer: null,
+    analysisEngine: null,
+    analysisNotes: null,
     localBusinesses: [],
     detectionBoxes: [],
+    images: [],
   };
 }

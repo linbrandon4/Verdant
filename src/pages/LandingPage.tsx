@@ -49,7 +49,7 @@ const faqs = [
 ];
 
 const tryVerdantHighlights = [
-  "Run a full inspection on sample bridge photos",
+  "Run a full inspection on using your own photos",
   "Explore severity scores and repair recommendations",
   "See sustainability impact estimates per finding",
   "No setup required. Sign in and start reviewing",
@@ -168,7 +168,7 @@ export default function LandingPage() {
               <span className="v-eyebrow">Computer vision</span>
               <h2>Optimal defect detection for every surface</h2>
               <p>
-                Our YOLOv8 model flags cracks, corrosion, spalling, and water damage with
+                Our machine learning model flags cracks, corrosion, spalling, and water damage with
                 confidence scores on every image, so inspectors spend less time reviewing and
                 more time acting.
               </p>

@@ -2,3 +2,11 @@ node_modules
 dist
 .DS_Store
 *.local
+
+# Backend secrets and runtime artifacts
+backend/.venv/
+backend/.env
+backend/uploads/
+
+# YOLO weights are large — copy from teammate or German.zip locally
+backend/weights/*.pt

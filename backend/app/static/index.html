@@ -1,0 +1,504 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>InfraVision AI</title>
+  <style>
+    :root {
+      color-scheme: light;
+      font-family: Arial, Helvetica, sans-serif;
+      background: #f4f6f8;
+      color: #17202a;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      padding: 24px;
+    }
+
+    main {
+      max-width: 1120px;
+      margin: 0 auto;
+    }
+
+    h1 {
+      margin: 0 0 8px;
+      font-size: 28px;
+    }
+
+    .status {
+      margin-bottom: 18px;
+      color: #52616f;
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: minmax(280px, 380px) 1fr;
+      gap: 18px;
+      align-items: start;
+    }
+
+    form,
+    .output {
+      background: #ffffff;
+      border: 1px solid #d8dee6;
+      border-radius: 8px;
+      padding: 18px;
+    }
+
+    label {
+      display: block;
+      margin: 0 0 12px;
+      font-weight: 700;
+    }
+
+    input,
+    select,
+    button {
+      width: 100%;
+      margin-top: 6px;
+      padding: 10px;
+      border: 1px solid #bcc6d0;
+      border-radius: 6px;
+      font: inherit;
+    }
+
+    button {
+      margin-top: 8px;
+      border: 0;
+      background: #1f6feb;
+      color: #ffffff;
+      cursor: pointer;
+      font-weight: 700;
+    }
+
+    button:disabled {
+      background: #8aa8d8;
+      cursor: wait;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    .message {
+      margin-top: 12px;
+      min-height: 22px;
+      color: #52616f;
+    }
+
+    .error {
+      color: #b42318;
+    }
+
+    .hidden {
+      display: none;
+    }
+
+    .summary {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 10px;
+      margin-bottom: 14px;
+    }
+
+    .metric {
+      border: 1px solid #d8dee6;
+      border-radius: 6px;
+      padding: 10px;
+      background: #f8fafc;
+    }
+
+    .metric span {
+      display: block;
+      color: #52616f;
+      font-size: 12px;
+      margin-bottom: 4px;
+    }
+
+    .report-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-bottom: 14px;
+    }
+
+    .report-section {
+      border: 1px solid #d8dee6;
+      border-radius: 6px;
+      padding: 12px;
+      background: #ffffff;
+    }
+
+    .report-section h2 {
+      margin: 0 0 8px;
+      font-size: 15px;
+    }
+
+    .report-section p {
+      margin: 0;
+      line-height: 1.4;
+    }
+
+    .business-list {
+      margin: 0;
+      padding-left: 18px;
+    }
+
+    .business-list li {
+      margin-bottom: 8px;
+    }
+
+    .muted {
+      color: #52616f;
+      font-size: 13px;
+    }
+
+    pre {
+      max-height: 520px;
+      overflow: auto;
+      padding: 12px;
+      border-radius: 6px;
+      background: #111827;
+      color: #e5e7eb;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+
+    img {
+      display: none;
+      width: 100%;
+      max-height: 420px;
+      object-fit: contain;
+      border: 1px solid #d8dee6;
+      border-radius: 6px;
+      margin: 12px 0;
+      background: #ffffff;
+    }
+
+    @media (max-width: 820px) {
+      body {
+        padding: 14px;
+      }
+
+      .layout,
+      .summary,
+      .report-grid,
+      .grid {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>InfraVision AI</h1>
+    <div id="health" class="status">Checking backend...</div>
+
+    <div class="layout">
+      <form id="inspectForm">
+        <label>
+          Infrastructure Image
+          <input id="file" name="file" type="file" accept="image/*" required>
+        </label>
+
+        <div class="grid">
+          <label>
+            State
+            <select id="stateSelect" name="state" required disabled>
+              <option value="">Loading states...</option>
+            </select>
+          </label>
+          <label id="cityLabel" class="hidden">
+            City
+            <select id="citySelect" name="city" required disabled>
+              <option value="">Select a state first</option>
+            </select>
+          </label>
+        </div>
+
+        <button id="submitButton" type="submit">Inspect Image</button>
+        <div id="message" class="message"></div>
+      </form>
+
+      <section class="output">
+        <div class="summary">
+          <div class="metric"><span>Detections</span><strong id="totalDetections">-</strong></div>
+          <div class="metric"><span>Analyzer</span><strong id="analyzer">-</strong></div>
+          <div class="metric"><span>Priority</span><strong id="priority">-</strong></div>
+          <div class="metric"><span>Severity</span><strong id="severity">-</strong></div>
+        </div>
+        <div class="report-grid">
+          <div class="report-section">
+            <h2>Cost To Fix</h2>
+            <p id="costToFix">-</p>
+          </div>
+          <div class="report-section">
+            <h2>Fix By</h2>
+            <p id="timeframe">-</p>
+          </div>
+          <div class="report-section">
+            <h2>Sustainable Method</h2>
+            <p id="sustainableMethod">-</p>
+          </div>
+          <div class="report-section">
+            <h2>Traditional vs Sustainable</h2>
+            <p id="sustainabilityComparison">-</p>
+          </div>
+          <div class="report-section">
+            <h2>Estimated Impact</h2>
+            <p id="quantifiedImpact">-</p>
+          </div>
+          <div class="report-section">
+            <h2>Local Businesses</h2>
+            <ul id="businessList" class="business-list">
+              <li class="muted">Run an inspection to see local repair options.</li>
+            </ul>
+          </div>
+        </div>
+        <img id="annotatedImage" alt="Annotated inspection result">
+        <pre id="jsonOutput">Upload an image to see the API response.</pre>
+      </section>
+    </div>
+  </main>
+
+  <script>
+    const healthEl = document.getElementById("health");
+    const form = document.getElementById("inspectForm");
+    const button = document.getElementById("submitButton");
+    const message = document.getElementById("message");
+    const output = document.getElementById("jsonOutput");
+    const image = document.getElementById("annotatedImage");
+    const totalDetections = document.getElementById("totalDetections");
+    const analyzer = document.getElementById("analyzer");
+    const priority = document.getElementById("priority");
+    const severity = document.getElementById("severity");
+    const costToFix = document.getElementById("costToFix");
+    const timeframe = document.getElementById("timeframe");
+    const sustainableMethod = document.getElementById("sustainableMethod");
+    const sustainabilityComparison = document.getElementById("sustainabilityComparison");
+    const quantifiedImpact = document.getElementById("quantifiedImpact");
+    const businessList = document.getElementById("businessList");
+    const stateSelect = document.getElementById("stateSelect");
+    const cityLabel = document.getElementById("cityLabel");
+    const citySelect = document.getElementById("citySelect");
+
+    async function loadHealth() {
+      try {
+        const response = await fetch("/api/health");
+        const data = await response.json();
+        healthEl.textContent =
+          `Backend ok. Road model: ${data.road_model_loaded ? "loaded" : "missing"}. ` +
+          `Building model: ${data.building_model_loaded ? "loaded" : "missing"}. ` +
+          `Gemini vision: ${data.gemini_vision_enabled && data.gemini_configured ? "enabled" : "off"}. ` +
+          `Uploads are auto-classified.`;
+      } catch (error) {
+        healthEl.textContent = "Backend health check failed.";
+      }
+    }
+
+    function setMessage(text, isError = false) {
+      message.textContent = text;
+      message.className = isError ? "message error" : "message";
+    }
+
+    function setSelectOptions(select, options, placeholder) {
+      select.innerHTML = "";
+      const placeholderOption = document.createElement("option");
+      placeholderOption.value = "";
+      placeholderOption.textContent = placeholder;
+      select.appendChild(placeholderOption);
+
+      for (const option of options) {
+        const optionEl = document.createElement("option");
+        optionEl.value = option.value;
+        optionEl.textContent = option.label;
+        select.appendChild(optionEl);
+      }
+    }
+
+    async function loadStates() {
+      try {
+        const response = await fetch("/api/locations/states");
+        const data = await response.json();
+        const options = (data.states || []).map((state) => ({
+          value: state.code,
+          label: `${state.name} (${state.code})`,
+        }));
+        setSelectOptions(stateSelect, options, "Select state");
+        stateSelect.disabled = false;
+      } catch (error) {
+        setSelectOptions(stateSelect, [], "Could not load states");
+        stateSelect.disabled = true;
+      }
+    }
+
+    async function loadCitiesForState(stateCode) {
+      cityLabel.classList.remove("hidden");
+      citySelect.disabled = true;
+      setSelectOptions(citySelect, [], "Loading cities...");
+
+      try {
+        const response = await fetch(`/api/locations/cities?state=${encodeURIComponent(stateCode)}`);
+        const data = await response.json();
+        if (!response.ok) {
+          throw new Error(data.detail || "Could not load cities");
+        }
+
+        const options = (data.cities || []).map((city) => ({
+          value: city,
+          label: city,
+        }));
+        setSelectOptions(citySelect, options, options.length ? "Select city" : "No cities found");
+        citySelect.disabled = !options.length;
+      } catch (error) {
+        setSelectOptions(citySelect, [], "Could not load cities");
+        citySelect.disabled = true;
+      }
+    }
+
+    function updateSummary(data) {
+      totalDetections.textContent = data?.aggregates?.total_detections ?? "-";
+      analyzer.textContent =
+        data?.analysis_engine === "gemini_vision"
+          ? "Gemini"
+          : data?.analysis_engine === "yolo"
+            ? "YOLO"
+            : "-";
+      priority.textContent = data?.computed_assessment?.priority ?? "-";
+      severity.textContent = data?.computed_assessment?.severity_score ?? "-";
+    }
+
+    function updateReport(data) {
+      costToFix.textContent = data?.gemini_report?.estimated_cost_range ?? "-";
+      timeframe.textContent =
+        data?.computed_assessment?.recommended_timeframe ||
+        data?.gemini_report?.recommended_timeframe ||
+        "-";
+      sustainableMethod.textContent = data?.gemini_report?.sustainable_solution ?? "-";
+      sustainabilityComparison.textContent = data?.gemini_report?.sustainability_comparison ?? "-";
+      const impactParts = [
+        data?.gemini_report?.estimated_avoided_material_waste
+          ? `Material waste avoided: ${data.gemini_report.estimated_avoided_material_waste}.`
+          : "",
+        data?.gemini_report?.estimated_carbon_savings
+          ? `Carbon savings: ${data.gemini_report.estimated_carbon_savings}.`
+          : "",
+        data?.gemini_report?.impact_analogy,
+      ].filter(Boolean);
+      quantifiedImpact.textContent = impactParts.length ? impactParts.join(" ") : "-";
+      renderBusinesses(data?.local_businesses || []);
+    }
+
+    function renderBusinesses(businesses) {
+      businessList.innerHTML = "";
+      if (!businesses.length) {
+        const item = document.createElement("li");
+        item.className = "muted";
+        item.textContent = "No local business suggestions returned.";
+        businessList.appendChild(item);
+        return;
+      }
+
+      for (const business of businesses) {
+        const item = document.createElement("li");
+        const title = document.createElement(business.maps_url ? "a" : "strong");
+        title.textContent = business.name;
+        if (business.maps_url) {
+          title.href = business.maps_url;
+          title.target = "_blank";
+          title.rel = "noopener noreferrer";
+        }
+        item.appendChild(title);
+
+        const details = [
+          business.source ? `Source: ${business.source}` : "",
+          business.address,
+          business.phone,
+          business.rating ? `Rating ${business.rating}` : "",
+          business.search_term ? `Search: ${business.search_term}` : "",
+          business.note || "",
+        ].filter(Boolean);
+
+        if (details.length) {
+          const meta = document.createElement("div");
+          meta.className = "muted";
+          meta.textContent = details.join(" | ");
+          item.appendChild(meta);
+        }
+
+        businessList.appendChild(item);
+      }
+    }
+
+    form.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      setMessage("Running auto inspection...");
+      button.disabled = true;
+      image.style.display = "none";
+      image.removeAttribute("src");
+
+      const formData = new FormData(form);
+      formData.set("inspection_type", "auto");
+      for (const key of ["city", "state"]) {
+        if (!formData.get(key)) {
+          formData.delete(key);
+        }
+      }
+
+      try {
+        const response = await fetch("/api/inspect", {
+          method: "POST",
+          body: formData,
+        });
+        const data = await response.json();
+
+        output.textContent = JSON.stringify(data, null, 2);
+        updateSummary(data);
+        updateReport(data);
+
+        if (!response.ok) {
+          setMessage(data.detail || "Inspection failed.", true);
+          return;
+        }
+
+        if (data.annotated_image_url) {
+          image.src = `${data.annotated_image_url}?t=${Date.now()}`;
+          image.style.display = "block";
+        }
+
+        setMessage("Inspection complete.");
+      } catch (error) {
+        output.textContent = String(error);
+        updateSummary(null);
+        updateReport(null);
+        setMessage("Request failed. Check that the backend is still running.", true);
+      } finally {
+        button.disabled = false;
+      }
+    });
+
+    stateSelect.addEventListener("change", () => {
+      const stateCode = stateSelect.value;
+      if (!stateCode) {
+        cityLabel.classList.add("hidden");
+        citySelect.disabled = true;
+        setSelectOptions(citySelect, [], "Select a state first");
+        return;
+      }
+
+      loadCitiesForState(stateCode);
+    });
+
+    loadHealth();
+    loadStates();
+  </script>
+</body>
+</html>

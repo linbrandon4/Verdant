@@ -15,11 +15,16 @@ import {
   UploadCloud,
   X,
 } from "lucide-react";
+import {
+  assetTypeToInspectionType,
+  inspectImages,
+  InspectionApiError,
+} from "../api/inspection";
 import { Logo } from "../components/Logo";
 import { InspectionResults } from "../components/dashboard/InspectionResults";
 import { useAuth } from "../context/AuthContext";
-import type { AssetType, InspectionResult, SourceFile } from "../types";
-import { createEmptyInspectionResult } from "../types";
+import type { AssetType, SavedAnalysis, SourceFile } from "../types";
+import { parseLocationLabel } from "../utils/location";
 
 const assetOptions: Array<{ value: AssetType; label: string }> = [
   { value: "bridge", label: "Bridge" },
@@ -39,25 +44,15 @@ const navItems: Array<{
   { label: "Settings", icon: Settings },
 ];
 
-const queue: Array<{
-  id: string;
-  name: string;
-  asset: string;
-  status: string;
-  findings: number;
-  date: string;
-}> = [];
+function formatAnalysisDate(iso: string) {
+  return new Date(iso).toLocaleDateString(undefined, {
+    month: "short",
+    day: "numeric",
+  });
+}
 
-function StatusBadge({ level }: { level: string }) {
-  const cls =
-    level === "Critical"
-      ? "badge-critical"
-      : level === "High"
-        ? "badge-high"
-        : level === "Medium"
-          ? "badge-medium"
-          : "badge-low";
-  return <span className={`ui-badge ${cls}`}>{level}</span>;
+function assetLabel(assetType: AssetType) {
+  return assetOptions.find((option) => option.value === assetType)?.label ?? assetType;
 }
 
 function DashField({
@@ -85,7 +80,8 @@ function DashField({
 export default function DashboardPage() {
   const { signOut } = useAuth();
   const navigate = useNavigate();
-  const [selectedId, setSelectedId] = useState("new");
+  const [analyses, setAnalyses] = useState<SavedAnalysis[]>([]);
+  const [selectedId, setSelectedId] = useState<"new" | string>("new");
   const [projectName, setProjectName] = useState("");
   const [assetType, setAssetType] = useState<AssetType>("bridge");
   const [locationLabel, setLocationLabel] = useState("");
@@ -93,9 +89,17 @@ export default function DashboardPage() {
   const [files, setFiles] = useState<SourceFile[]>([]);
   const [isDragging, setIsDragging] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [inspectionResult, setInspectionResult] = useState<InspectionResult | null>(null);
+  const [analyzeProgress, setAnalyzeProgress] = useState<{
+    current: number;
+    total: number;
+    fileName: string;
+  } | null>(null);
+  const [analyzeError, setAnalyzeError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const objectUrlsRef = useRef<string[]>([]);
+  const fileMapRef = useRef<Map<string, File>>(new Map());
+
+  const selectedAnalysis = analyses.find((analysis) => analysis.id === selectedId);
 
   useEffect(
     () => () => {
@@ -104,15 +108,34 @@ export default function DashboardPage() {
     [],
   );
 
+  const resetDraft = () => {
+    objectUrlsRef.current.forEach((url) => URL.revokeObjectURL(url));
+    objectUrlsRef.current = [];
+    fileMapRef.current.clear();
+    setFiles([]);
+    setProjectName("");
+    setAssetType("bridge");
+    setLocationLabel("");
+    setNotes("");
+    setAnalyzeError(null);
+  };
+
+  const handleNewAnalysis = () => {
+    resetDraft();
+    setSelectedId("new");
+  };
+
   const handleFiles = (fileList: FileList | File[]) => {
     const incoming = Array.from(fileList).filter((f) => f.type.startsWith("image/"));
     if (incoming.length === 0) return;
 
     const newFiles: SourceFile[] = incoming.map((file, index) => {
+      const id = `file-${Date.now()}-${index}`;
       const previewUrl = URL.createObjectURL(file);
       objectUrlsRef.current.push(previewUrl);
+      fileMapRef.current.set(id, file);
       return {
-        id: `file-${Date.now()}-${index}`,
+        id,
         fileName: file.name,
         fileType: file.type,
         previewUrl,
@@ -120,8 +143,24 @@ export default function DashboardPage() {
       };
     });
 
-    setFiles((prev) => [...prev, ...newFiles]);
-    setSelectedId("new");
+    if (selectedId !== "new") {
+      objectUrlsRef.current.forEach((url) => URL.revokeObjectURL(url));
+      objectUrlsRef.current = newFiles.map((file) => file.previewUrl);
+      fileMapRef.current.clear();
+      incoming.forEach((file, index) => {
+        fileMapRef.current.set(newFiles[index].id, file);
+      });
+      setProjectName("");
+      setAssetType("bridge");
+      setLocationLabel("");
+      setNotes("");
+      setSelectedId("new");
+      setFiles(newFiles);
+    } else {
+      setFiles((prev) => [...prev, ...newFiles]);
+    }
+
+    setAnalyzeError(null);
   };
 
   const removeFile = (id: string) => {
@@ -130,6 +169,7 @@ export default function DashboardPage() {
       if (removed) {
         URL.revokeObjectURL(removed.previewUrl);
         objectUrlsRef.current = objectUrlsRef.current.filter((u) => u !== removed.previewUrl);
+        fileMapRef.current.delete(id);
       }
       return prev.filter((f) => f.id !== id);
     });
@@ -138,30 +178,90 @@ export default function DashboardPage() {
   const clearAll = () => {
     objectUrlsRef.current.forEach((url) => URL.revokeObjectURL(url));
     objectUrlsRef.current = [];
+    fileMapRef.current.clear();
     setFiles([]);
+    setAnalyzeError(null);
   };
 
   const canAnalyze = files.length > 0 && projectName.trim().length > 0;
 
   const handleAnalyze = async () => {
     if (!canAnalyze) return;
+
+    const uploadFiles = files
+      .map((entry) => fileMapRef.current.get(entry.id))
+      .filter((file): file is File => Boolean(file));
+
+    if (uploadFiles.length === 0) {
+      setAnalyzeError("Could not read the selected photos. Try uploading again.");
+      return;
+    }
+
     setIsAnalyzing(true);
-    await new Promise((r) => setTimeout(r, 1200));
-    setInspectionResult(createEmptyInspectionResult());
-    setIsAnalyzing(false);
+    setAnalyzeError(null);
+    setAnalyzeProgress(null);
+
+    try {
+      const { city, state } = parseLocationLabel(locationLabel);
+      const result = await inspectImages({
+        files: uploadFiles,
+        inspectionType: assetTypeToInspectionType(assetType),
+        city,
+        state,
+        onProgress: setAnalyzeProgress,
+      });
+
+      const saved: SavedAnalysis = {
+        id: `analysis-${Date.now()}`,
+        name: projectName.trim(),
+        assetType,
+        locationLabel,
+        notes,
+        result,
+        createdAt: new Date().toISOString(),
+      };
+
+      setAnalyses((prev) => [saved, ...prev]);
+      setSelectedId(saved.id);
+      clearAll();
+      setProjectName("");
+      setLocationLabel("");
+      setNotes("");
+    } catch (error) {
+      const message =
+        error instanceof InspectionApiError
+          ? error.message
+          : error instanceof Error
+            ? error.message
+            : "Analysis failed. Check that the backend is running.";
+      setAnalyzeError(message);
+    } finally {
+      setIsAnalyzing(false);
+      setAnalyzeProgress(null);
+    }
   };
 
-  const handleBackToForm = () => {
-    setInspectionResult(null);
+  const handleDeleteAnalysis = (id: string) => {
+    setAnalyses((prev) => prev.filter((analysis) => analysis.id !== id));
+    if (selectedId === id) {
+      handleNewAnalysis();
+    }
   };
 
-  const selected = queue.find((q) => q.id === selectedId);
+  const handleSelectAnalysis = (id: string) => {
+    setSelectedId(id);
+  };
 
   const handleGoHome = (event: MouseEvent<HTMLAnchorElement>) => {
     event.preventDefault();
     signOut();
     navigate("/", { replace: true });
   };
+
+  const activeResult = selectedAnalysis?.result ?? null;
+  const activeProjectName = selectedAnalysis?.name ?? projectName;
+  const showResults = selectedId !== "new" && Boolean(activeResult);
+  const showNewForm = selectedId === "new";
 
   return (
     <div className="app-dashboard">
@@ -187,13 +287,14 @@ export default function DashboardPage() {
         <div className="app-dash-list">
           <div className="app-dash-list-head">
             <strong>Structures</strong>
-            <button onClick={() => { setInspectionResult(null); setSelectedId("new"); }} type="button">
+            <button onClick={handleNewAnalysis} type="button">
               + New
             </button>
           </div>
+
           <button
             className={`app-dash-list-item ${selectedId === "new" ? "selected" : ""}`}
-            onClick={() => { setInspectionResult(null); setSelectedId("new"); }}
+            onClick={handleNewAnalysis}
             type="button"
           >
             <div>
@@ -201,20 +302,21 @@ export default function DashboardPage() {
               <small>Upload photos to begin</small>
             </div>
           </button>
-          {queue.map((row) => (
+
+          {analyses.map((analysis) => (
             <button
-              className={`app-dash-list-item ${selectedId === row.id ? "selected" : ""}`}
-              key={row.id}
-              onClick={() => setSelectedId(row.id)}
+              className={`app-dash-list-item ${selectedId === analysis.id ? "selected" : ""}`}
+              key={analysis.id}
+              onClick={() => handleSelectAnalysis(analysis.id)}
               type="button"
             >
               <div>
-                <strong>{row.name}</strong>
+                <strong>{analysis.name}</strong>
                 <small>
-                  {row.asset} · {row.findings} findings · {row.date}
+                  {assetLabel(analysis.assetType)} · {analysis.result.detections ?? 0} findings ·{" "}
+                  {analysis.result.priority ?? "Low"} · {formatAnalysisDate(analysis.createdAt)}
                 </small>
               </div>
-              <StatusBadge level={row.status} />
             </button>
           ))}
         </div>
@@ -223,17 +325,22 @@ export default function DashboardPage() {
           {isAnalyzing ? (
             <div className="insp-loading">
               <div className="insp-loading-pulse" />
-              <p>Running inspection analysis…</p>
+              <p>
+                {analyzeProgress
+                  ? `Analyzing photo ${analyzeProgress.current} of ${analyzeProgress.total}: ${analyzeProgress.fileName}`
+                  : "Running inspection analysis…"}
+              </p>
+              <p className="insp-loading-hint">YOLO detection + AI report — usually 20–45 sec per photo</p>
             </div>
           ) : null}
 
-          {inspectionResult ? (
+          {showResults && activeResult ? (
             <InspectionResults
-              onBack={handleBackToForm}
-              projectName={projectName}
-              result={inspectionResult}
+              onDelete={() => handleDeleteAnalysis(selectedId)}
+              projectName={activeProjectName}
+              result={activeResult}
             />
-          ) : selectedId === "new" ? (
+          ) : showNewForm ? (
             <>
               <div className="app-dash-form">
                 <DashField icon={<Building2 size={16} />} label="Project name">
@@ -259,7 +366,7 @@ export default function DashboardPage() {
                   </DashField>
                   <DashField icon={<MapPin size={16} />} label="Location">
                     <input
-                      placeholder="Downtown corridor"
+                      placeholder="Atlanta, GA"
                       value={locationLabel}
                       onChange={(e) => setLocationLabel(e.target.value)}
                     />
@@ -362,74 +469,7 @@ export default function DashboardPage() {
                   {!projectName.trim() && files.length > 0 ? (
                     <p className="dash-hint">Add a project name to continue.</p>
                   ) : null}
-                </div>
-              </div>
-            </>
-          ) : selected ? (
-            <>
-              <header className="app-dash-detail-head">
-                <div className="app-dash-detail-title">
-                  <span className="app-dash-detail-icon" aria-hidden="true">
-                    <ClipboardList size={22} strokeWidth={1.75} />
-                  </span>
-                  <div>
-                    <h1>{selected.name}</h1>
-                    <p>
-                      {selected.asset} · {selected.findings} findings
-                    </p>
-                  </div>
-                </div>
-                <button className="app-dash-analyze-btn" type="button">
-                  View report
-                </button>
-              </header>
-
-              <div className="ui-detail-image app-dash-preview">
-                <span className="ui-hotspot h1">Crack 94%</span>
-                <span className="ui-hotspot h2">Water 87%</span>
-                <span className="ui-hotspot h3">Spall 91%</span>
-              </div>
-
-              <div className="ui-recs app-dash-recs">
-                <strong>Repair recommendations</strong>
-                <div className="ui-rec">
-                  <StatusBadge level="High" />
-                  <div>
-                    <span>Localized joint sealing</span>
-                    <small>$4.2k to $8.1k · 30 to 90 days · 2.1t CO₂e avoided</small>
-                  </div>
-                </div>
-                <div className="ui-rec">
-                  <StatusBadge level="Medium" />
-                  <div>
-                    <span>Deck spalling patch</span>
-                    <small>$1.8k to $3.4k · 90 to 180 days · 0.8t CO₂e avoided</small>
-                  </div>
-                </div>
-              </div>
-
-              <div className="ui-history app-dash-history">
-                <strong>History</strong>
-                <div className="ui-history-item">
-                  <i />
-                  <div>
-                    <span>12 photos uploaded</span>
-                    <small>{selected.date}, 2026</small>
-                  </div>
-                </div>
-                <div className="ui-history-item">
-                  <i />
-                  <div>
-                    <span>CV model flagged {selected.findings} defects</span>
-                    <small>{selected.date}, 2026</small>
-                  </div>
-                </div>
-                <div className="ui-history-item">
-                  <i />
-                  <div>
-                    <span>Repair queue generated</span>
-                    <small>{selected.date}, 2026</small>
-                  </div>
+                  {analyzeError ? <p className="dash-error">{analyzeError}</p> : null}
                 </div>
               </div>
             </>
